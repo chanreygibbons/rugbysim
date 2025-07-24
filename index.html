@@ -1,847 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rugby Play Simulator MVP</title>
-    <script src="https://unpkg.com/konva@8.4.0/konva.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a2a6c, #2a6b47);
-            color: #fff;
-            min-height: 100vh;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 250px 1fr 300px;
-            grid-template-rows: 70px 1fr 120px;
-            grid-gap: 15px;
-            height: calc(100vh - 40px);
-        }
-        
-        header {
-            grid-column: 1 / -1;
-            background: rgba(0, 20, 40, 0.8);
-            border-radius: 10px;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            border-bottom: 2px solid #ffd700;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .logo h1 {
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(to right, #ffd700, #ffffff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 20px;
-        }
-        
-        .nav-links {
-            display: flex;
-            margin-left: 40px;
-            gap: 20px;
-        }
-        
-        .nav-links a {
-            color: #aaccff;
-            text-decoration: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-        
-        .nav-links a:hover, .nav-links a.active {
-            background: rgba(255, 215, 0, 0.2);
-            color: #ffd700;
-        }
-        
-        .user-area {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #4a90e2, #9013fe);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-        
-        .sidebar {
-            background: rgba(0, 20, 40, 0.8);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .panel-title {
-            font-size: 18px;
-            color: #ffd700;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .players-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-        
-        .player-item {
-            background: rgba(30, 60, 120, 0.7);
-            border-radius: 5px;
-            padding: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        
-        .player-item:hover {
-            background: rgba(74, 144, 226, 0.7);
-            transform: translateY(-2px);
-        }
-        
-        .player-item.selected {
-            border-color: #ffd700;
-            background: rgba(74, 144, 226, 0.9);
-        }
-        
-        .player-icon {
-            width: 30px;
-            height: 30px;
-            background: #1e3c78;
-            border-radius: 50%;
-            margin: 0 auto 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        
-        .tool-btn {
-            background: rgba(30, 60, 120, 0.7);
-            border-radius: 5px;
-            padding: 12px 5px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        
-        .tool-btn:hover {
-            background: rgba(74, 144, 226, 0.7);
-        }
-        
-        .tool-btn.active {
-            border-color: #ffd700;
-            background: rgba(74, 144, 226, 0.9);
-        }
-        
-        .tool-btn i {
-            font-size: 20px;
-            display: block;
-            margin-bottom: 5px;
-        }
-        
-        .canvas-container {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            position: relative;
-        }
-        
-        #field-canvas {
-            background: #2a6b47;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .properties-panel {
-            background: rgba(0, 20, 40, 0.8);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        }
-        
-        .property-group {
-            background: rgba(30, 60, 120, 0.5);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .property-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        
-        .property-label {
-            color: #aaccff;
-        }
-        
-        .property-value {
-            font-weight: bold;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
-        }
-        
-        .controls {
-            grid-column: 1 / -1;
-            background: rgba(0, 20, 40, 0.8);
-            border-radius: 10px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        }
-        
-        .playback-controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .control-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(30, 60, 120, 0.7);
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        
-        .control-btn:hover {
-            background: rgba(74, 144, 226, 0.9);
-            transform: scale(1.1);
-        }
-        
-        .control-btn.play {
-            width: 60px;
-            height: 60px;
-            background: rgba(42, 107, 71, 0.8);
-            font-size: 24px;
-        }
-        
-        .timeline-container {
-            flex: 1;
-            margin: 0 30px;
-        }
-        
-        .timeline {
-            height: 30px;
-            background: rgba(30, 60, 120, 0.5);
-            border-radius: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .progress {
-            height: 100%;
-            width: 35%;
-            background: linear-gradient(90deg, #ff8c00, #ffd700);
-            border-radius: 15px;
-        }
-        
-        .event-markers {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .event-marker {
-            position: absolute;
-            top: 0;
-            width: 10px;
-            height: 10px;
-            background: #ff0000;
-            border-radius: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .event-marker:nth-child(1) { left: 25%; }
-        .event-marker:nth-child(2) { left: 60%; }
-        
-        .time-display {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-            font-size: 14px;
-            color: #aaccff;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-        }
-        
-        .action-btn {
-            padding: 12px 25px;
-            border-radius: 30px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .save-btn {
-            background: linear-gradient(135deg, #4a90e2, #5b6bf0);
-            color: white;
-        }
-        
-        .reset-btn {
-            background: linear-gradient(135deg, #ff8c00, #ff2e63);
-            color: white;
-        }
-        
-        .action-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-        
-        .instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            max-width: 300px;
-        }
-        
-        @media (max-width: 1100px) {
-            .container {
-                grid-template-columns: 200px 1fr;
-            }
-            .properties-panel {
-                grid-column: 1 / -1;
-                grid-row: 2;
-            }
-            .canvas-container {
-                grid-row: 3;
-                grid-column: 1 / -1;
-            }
-            .controls {
-                grid-row: 4;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rugby Play Simulator MVP</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .toolbar {
+      background: #222;
+      color: #fff;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .toolbar button, .toolbar select, .toolbar input[type="checkbox"], .toolbar input[type="range"] {
+      padding: 6px 10px;
+      background: #444;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .toolbar button:hover {
+      background: #666;
+    }
+
+    #field {
+      position: relative;
+      flex-grow: 1;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Rugby_pitch_metric_and_imperial.svg/1280px-Rugby_pitch_metric_and_imperial.svg.png') no-repeat center;
+      background-size: contain;
+      overflow: hidden;
+    }
+
+    .player, .ball {
+      position: absolute;
+      cursor: grab;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      user-select: none;
+      touch-action: none;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .player {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      line-height: 40px;
+      color: #fff;
+    }
+
+    .player.forward { background-color: crimson; }
+    .player.back { background-color: royalblue; }
+    .player.other { background-color: seagreen; }
+    .player.dummy { opacity: 0.5; }
+
+    .dummy-label {
+      position: absolute;
+      font-size: 12px;
+      color: yellow;
+      text-shadow: 0 0 3px black;
+      pointer-events: none;
+    }
+
+    .ball {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: gold;
+    }
+
+    .path-line {
+      position: absolute;
+      border: 1px dashed rgba(255,255,255,0.4);
+      pointer-events: none;
+    }
+
+    .step-panel {
+      background: #eee;
+      padding: 10px;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-top: 5px;
+      font-size: 12px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">
-                <div class="logo-icon">R</div>
-                <h1>Rugby Play Simulator</h1>
-            </div>
-            <div class="nav-links">
-                <a href="#" class="active">Design</a>
-                <a href="#">My Plays</a>
-                <a href="#">Templates</a>
-                <a href="#">Team</a>
-            </div>
-            <div class="user-area">
-                <div class="user-avatar">JD</div>
-                <div>Coach Daniels</div>
-            </div>
-        </header>
-        
-        <aside class="sidebar">
-            <div class="panel">
-                <div class="panel-title">Players</div>
-                <div class="players-grid">
-                    <div class="player-item" data-player="9">
-                        <div class="player-icon">9</div>
-                        <div>Scrum Half</div>
-                    </div>
-                    <div class="player-item" data-player="10">
-                        <div class="player-icon">10</div>
-                        <div>Fly Half</div>
-                    </div>
-                    <div class="player-item" data-player="12">
-                        <div class="player-icon">12</div>
-                        <div>Inside Center</div>
-                    </div>
-                    <div class="player-item" data-player="13">
-                        <div class="player-icon">13</div>
-                        <div>Outside Center</div>
-                    </div>
-                    <div class="player-item" data-player="11">
-                        <div class="player-icon">11</div>
-                        <div>Left Wing</div>
-                    </div>
-                    <div class="player-item" data-player="14">
-                        <div class="player-icon">14</div>
-                        <div>Right Wing</div>
-                    </div>
-                    <div class="player-item" data-player="15">
-                        <div class="player-icon">15</div>
-                        <div>Full Back</div>
-                    </div>
-                    <div class="player-item" data-player="1">
-                        <div class="player-icon">1</div>
-                        <div>Loosehead</div>
-                    </div>
-                    <div class="player-item" data-player="2">
-                        <div class="player-icon">2</div>
-                        <div>Hooker</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="panel">
-                <div class="panel-title">Tools</div>
-                <div class="tools-grid">
-                    <div class="tool-btn active" data-tool="select">
-                        <i>✋</i>
-                        <div>Select</div>
-                    </div>
-                    <div class="tool-btn" data-tool="move">
-                        <i>➡️</i>
-                        <div>Move</div>
-                    </div>
-                    <div class="tool-btn" data-tool="path">
-                        <i>↗️</i>
-                        <div>Path</div>
-                    </div>
-                    <div class="tool-btn" data-tool="pass">
-                        <i>⇨</i>
-                        <div>Pass</div>
-                    </div>
-                    <div class="tool-btn" data-tool="ruck">
-                        <i>★</i>
-                        <div>Ruck</div>
-                    </div>
-                    <div class="tool-btn" data-tool="scrum">
-                        <i>⧉</i>
-                        <div>Scrum</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="panel">
-                <div class="panel-title">Formations</div>
-                <select style="width: 100%; padding: 10px; background: rgba(30,60,120,0.7); color: white; border: none; border-radius: 5px;">
-                    <option>Backs Attack (Flat)</option>
-                    <option>Forwards Pod (3-2-2)</option>
-                    <option>Lineout (4 Man)</option>
-                    <option>Scrum (Attacking)</option>
-                </select>
-            </div>
-        </aside>
-        
-        <main class="canvas-container">
-            <div id="field-canvas"></div>
-            <div class="instructions">
-                <b>Instructions:</b> Select a player → Choose a tool → Draw on field<br>
-                Use timeline below to animate the play
-            </div>
-        </main>
-        
-        <aside class="properties-panel">
-            <div class="panel-title">Selected: Player 10</div>
-            
-            <div class="property-group">
-                <div class="property-row">
-                    <span class="property-label">Position:</span>
-                    <span class="property-value">(145, 220)</span>
-                </div>
-                <div class="property-row">
-                    <span class="property-label">Speed:</span>
-                    <span class="property-value">Moderate</span>
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="panel-title">Movement Path</div>
-                <div class="property-row">
-                    <span class="property-label">Waypoints:</span>
-                    <span class="property-value">3</span>
-                </div>
-                <div class="property-row">
-                    <span class="property-label">Duration:</span>
-                    <span class="property-value">4.2s</span>
-                </div>
-                <div>
-                    <span class="property-label">Curve Smoothness:</span>
-                    <input type="range" min="0" max="100" value="50">
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="panel-title">Actions</div>
-                <div class="property-row">
-                    <span class="property-label">Pass To:</span>
-                    <span class="property-value">Player 12</span>
-                </div>
-                <div class="property-row">
-                    <span class="property-label">Time:</span>
-                    <span class="property-value">2.1s</span>
-                </div>
-            </div>
-        </aside>
-        
-        <footer class="controls">
-            <div class="playback-controls">
-                <button class="control-btn">⏮</button>
-                <button class="control-btn play">▶</button>
-                <button class="control-btn">⏭</button>
-            </div>
-            
-            <div class="timeline-container">
-                <div class="timeline">
-                    <div class="progress"></div>
-                    <div class="event-markers">
-                        <div class="event-marker" title="Pass to 12"></div>
-                        <div class="event-marker" title="Ruck"></div>
-                    </div>
-                </div>
-                <div class="time-display">
-                    <span>0:00</span>
-                    <span>0:06</span>
-                </div>
-            </div>
-            
-            <div class="speed-control">
-                <select style="padding: 10px 15px; background: rgba(30,60,120,0.7); color: white; border: none; border-radius: 5px;">
-                    <option>0.5x Speed</option>
-                    <option selected>1.0x Speed</option>
-                    <option>2.0x Speed</option>
-                </select>
-            </div>
-            
-            <div class="action-buttons">
-                <button class="action-btn save-btn">SAVE PLAY</button>
-                <button class="action-btn reset-btn">RESET</button>
-            </div>
-        </footer>
-    </div>
+  <div class="toolbar">
+    <button id="addPlayerBtn">Add Player</button>
+    <select id="roleSelect">
+      <option value="forward">Forward</option>
+      <option value="back">Back</option>
+      <option value="other">Other</option>
+    </select>
+    <button id="addBallBtn">Add Ball</button>
+    <button id="saveStepBtn">Save Step</button>
+    <button id="playStepsBtn">Play</button>
+    <button id="resetBtn">Reset</button>
+    <label><input type="checkbox" id="dummyToggle"> Dummy Runner</label>
+    <label for="speedRange">Speed:</label>
+    <input type="range" id="speedRange" min="200" max="2000" step="100" value="800">
+    <button id="exportBtn">Export</button>
+    <button id="importBtn">Import</button>
+  </div>
 
-    <script>
-        // Initialize Konva Stage
-        const stage = new Konva.Stage({
-            container: 'field-canvas',
-            width: document.querySelector('.canvas-container').offsetWidth,
-            height: document.querySelector('.canvas-container').offsetHeight
-        });
-        
-        const layer = new Konva.Layer();
-        stage.add(layer);
-        
-        // Draw Rugby Field
-        function drawField() {
-            const width = stage.width();
-            const height = stage.height();
-            
-            // Field background
-            const field = new Konva.Rect({
-                x: 0,
-                y: 0,
-                width: width,
-                height: height,
-                fill: '#2a6b47',
-                cornerRadius: 5
-            });
-            layer.add(field);
-            
-            // Field markings
-            const lineProps = {
-                stroke: 'white',
-                strokeWidth: 2,
-                dash: [10, 10],
-                opacity: 0.7
-            };
-            
-            // Halfway line
-            const halfwayLine = new Konva.Line({
-                points: [width/2, 0, width/2, height],
-                ...lineProps
-            });
-            layer.add(halfwayLine);
-            
-            // 22m lines
-            const twentyTwoLine1 = new Konva.Line({
-                points: [width*0.2, 0, width*0.2, height],
-                ...lineProps
-            });
-            
-            const twentyTwoLine2 = new Konva.Line({
-                points: [width*0.8, 0, width*0.8, height],
-                ...lineProps
-            });
-            layer.add(twentyTwoLine1);
-            layer.add(twentyTwoLine2);
-            
-            // Try lines
-            const tryLine1 = new Konva.Line({
-                points: [20, 0, 20, height],
-                stroke: 'white',
-                strokeWidth: 3
-            });
-            
-            const tryLine2 = new Konva.Line({
-                points: [width-20, 0, width-20, height],
-                stroke: 'white',
-                strokeWidth: 3
-            });
-            layer.add(tryLine1);
-            layer.add(tryLine2);
-            
-            // Goal posts
-            const goalPost1 = new Konva.Line({
-                points: [20, height/2-40, 20, height/2+40],
-                stroke: 'white',
-                strokeWidth: 3
-            });
-            
-            const goalPost2 = new Konva.Line({
-                points: [width-20, height/2-40, width-20, height/2+40],
-                stroke: 'white',
-                strokeWidth: 3
-            });
-            layer.add(goalPost1);
-            layer.add(goalPost2);
-            
-            // Add labels
-            const addLabel = (text, x, y) => {
-                const label = new Konva.Text({
-                    x: x,
-                    y: y,
-                    text: text,
-                    fontSize: 14,
-                    fontFamily: 'Arial',
-                    fill: 'rgba(255, 255, 255, 0.7)',
-                    padding: 5
-                });
-                layer.add(label);
-            };
-            
-            addLabel('TRY LINE', 25, 20);
-            addLabel('22m LINE', width*0.2 + 10, 20);
-            addLabel('HALFWAY', width/2 - 30, 20);
-            addLabel('22m LINE', width*0.8 + 10, 20);
-            addLabel('TRY LINE', width - 80, 20);
-            
-            layer.draw();
+  <div id="field"></div>
+
+  <div class="step-panel">
+    Step: <span id="currentStep">0</span>
+    <textarea id="playData" placeholder="Exported/Imported JSON will appear here..."></textarea>
+  </div>
+
+  <script>
+    (() => {
+      let playerCount = 0;
+      const players = [];
+      let ball = null;
+      const steps = [];
+      const paths = new Map(); // path waypoints for players
+      let ballPath = [];       // path for the ball
+      let selectedPlayer = null;
+      const field = document.getElementById("field");
+      const stepDisplay = document.getElementById("currentStep");
+      const playData = document.getElementById("playData");
+      const speedSlider = document.getElementById("speedRange");
+      const dummyToggle = document.getElementById("dummyToggle");
+
+      // Toolbar listeners
+      document.getElementById("addPlayerBtn").addEventListener("click", () => addPlayer(document.getElementById("roleSelect").value));
+      document.getElementById("addBallBtn").addEventListener("click", addBall);
+      document.getElementById("saveStepBtn").addEventListener("click", saveStep);
+      document.getElementById("playStepsBtn").addEventListener("click", playSteps);
+      document.getElementById("resetBtn").addEventListener("click", resetField);
+      document.getElementById("exportBtn").addEventListener("click", exportPlay);
+      document.getElementById("importBtn").addEventListener("click", importPlay);
+      dummyToggle.addEventListener("change", () => {
+        if (selectedPlayer) selectedPlayer.classList.toggle("dummy", dummyToggle.checked);
+      });
+
+      // Click to add path waypoints (players or ball)
+      field.addEventListener("click", (e) => {
+        const rect = field.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        if (selectedPlayer) {
+          const id = selectedPlayer.dataset.id;
+          if (!paths.has(id)) paths.set(id, []);
+          paths.get(id).push({ x, y });
+          drawPath(selectedPlayer);
+        } else if (ball) {
+          ballPath.push({ x, y });
+          drawPath(ball, true);
         }
-        
-        // Create players
-        function createPlayers() {
-            // Sample player positions
-            const positions = [
-                { number: 9, x: stage.width() * 0.45, y: stage.height() * 0.7 },
-                { number: 10, x: stage.width() * 0.45, y: stage.height() * 0.6 },
-                { number: 12, x: stage.width() * 0.55, y: stage.height() * 0.55 },
-                { number: 13, x: stage.width() * 0.6, y: stage.height() * 0.5 },
-                { number: 15, x: stage.width() * 0.45, y: stage.height() * 0.4 }
-            ];
-            
-            positions.forEach(pos => {
-                const player = new Konva.Group({
-                    x: pos.x,
-                    y: pos.y,
-                    draggable: true
-                });
-                
-                const circle = new Konva.Circle({
-                    radius: 18,
-                    fill: '#1e3c78',
-                    stroke: '#ffd700',
-                    strokeWidth: 2
-                });
-                
-                const text = new Konva.Text({
-                    text: pos.number.toString(),
-                    fontSize: 14,
-                    fontFamily: 'Arial',
-                    fill: 'white',
-                    align: 'center',
-                    verticalAlign: 'middle',
-                    width: circle.radius() * 2,
-                    height: circle.radius() * 2,
-                    offsetX: circle.radius(),
-                    offsetY: circle.radius()/2
-                });
-                
-                player.add(circle);
-                player.add(text);
-                layer.add(player);
-                
-                // Add hover effect
-                player.on('mouseenter', () => {
-                    circle.strokeWidth(4);
-                    layer.draw();
-                });
-                
-                player.on('mouseleave', () => {
-                    circle.strokeWidth(2);
-                    layer.draw();
-                });
-            });
-            
-            layer.draw();
+      });
+
+      // Add Player
+      function addPlayer(role) {
+        playerCount++;
+        const player = document.createElement("div");
+        player.className = `player ${role}`;
+        player.textContent = playerCount;
+        player.dataset.id = `player${playerCount}`;
+        setInitialPosition(player);
+        makeDraggable(player);
+        player.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectPlayer(player);
+        });
+        field.appendChild(player);
+        players.push(player);
+      }
+
+      // Add Ball
+      function addBall() {
+        if (ball) return;
+        ball = document.createElement("div");
+        ball.className = "ball";
+        setInitialPosition(ball);
+        makeDraggable(ball);
+        ball.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedPlayer = null; // deselect players
+        });
+        field.appendChild(ball);
+      }
+
+      function setInitialPosition(el) {
+        el.style.left = "100px";
+        el.style.top = "100px";
+      }
+
+      function selectPlayer(player) {
+        selectedPlayer = player;
+        dummyToggle.checked = player.classList.contains("dummy");
+      }
+
+      // Draggable logic (touch + mouse)
+      function makeDraggable(el) {
+        let offsetX, offsetY;
+        const startDrag = (clientX, clientY) => {
+          offsetX = clientX - el.getBoundingClientRect().left;
+          offsetY = clientY - el.getBoundingClientRect().top;
+          el.style.cursor = "grabbing";
+        };
+        const moveDrag = (clientX, clientY) => {
+          const rect = field.getBoundingClientRect();
+          const newX = clientX - offsetX - rect.left;
+          const newY = clientY - offsetY - rect.top;
+          const maxX = field.clientWidth - el.clientWidth;
+          const maxY = field.clientHeight - el.clientHeight;
+          el.style.left = `${Math.max(0, Math.min(maxX, newX))}px`;
+          el.style.top = `${Math.max(0, Math.min(maxY, newY))}px`;
+        };
+        const stopDrag = () => {
+          el.style.cursor = "grab";
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+          document.removeEventListener("touchmove", onTouchMove);
+          document.removeEventListener("touchend", onTouchEnd);
+        };
+        const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
+        const onMouseUp = () => stopDrag();
+        const onTouchMove = (e) => {
+          e.preventDefault();
+          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        const onTouchEnd = () => stopDrag();
+        el.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          startDrag(e.clientX, e.clientY);
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+        el.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          startDrag(e.touches[0].clientX, e.touches[0].clientY);
+          document.addEventListener("touchmove", onTouchMove, { passive: false });
+          document.addEventListener("touchend", onTouchEnd);
+        });
+      }
+
+      // Draw faint path
+      function drawPath(element, isBall = false) {
+        const id = isBall ? "ball" : element.dataset.id;
+        const oldLine = field.querySelector(`.path-line[data-id="${id}"]`);
+        if (oldLine) oldLine.remove();
+        const pts = isBall ? ballPath : paths.get(id);
+        if (!pts || pts.length < 2) return;
+        const line = document.createElement("div");
+        line.className = "path-line";
+        line.dataset.id = id;
+        line.style.left = "0";
+        line.style.top = "0";
+        line.style.width = "100%";
+        line.style.height = "100%";
+        field.appendChild(line);
+      }
+
+      // Bezier interpolation for animations
+      function bezierPoint(p0, p1, p2, t) {
+        const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+        const y = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
+        return { x, y };
+      }
+
+      function animatePlayerAlongPath(element, waypoints, duration) {
+        if (!waypoints || waypoints.length < 2) return;
+        const startTime = performance.now();
+        const totalSegments = waypoints.length - 1;
+
+        function animate(time) {
+          const elapsed = time - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const segProgress = progress * totalSegments;
+          const segIndex = Math.floor(segProgress);
+          const t = segProgress - segIndex;
+
+          const p0 = waypoints[segIndex] || waypoints[0];
+          const p1 = waypoints[segIndex + 1] || waypoints[waypoints.length - 1];
+          const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+          const pos = bezierPoint(p0, mid, p1, t);
+
+          element.style.left = `${pos.x - element.clientWidth / 2}px`;
+          element.style.top = `${pos.y - element.clientHeight / 2}px`;
+
+          if (progress < 1) requestAnimationFrame(animate);
         }
-        
-        // Draw a sample play
-        function drawSamplePlay() {
-            // Player 10 movement path
-            const path = new Konva.Arrow({
-                points: [
-                    stage.width() * 0.45, stage.height() * 0.6,
-                    stage.width() * 0.48, stage.height() * 0.55,
-                    stage.width() * 0.52, stage.height() * 0.52
-                ],
-                pointerLength: 10,
-                pointerWidth: 10,
-                fill: 'rgba(255, 215, 0, 0.8)',
-                stroke: 'rgba(255, 215, 0, 0.8)',
-                strokeWidth: 3,
-                dash: [10, 5]
-            });
-            layer.add(path);
-            
-            // Pass from 10 to 12
-            const pass = new Konva.Arrow({
-                points: [
-                    stage.width() * 0.52, stage.height() * 0.52,
-                    stage.width() * 0.55, stage.height() * 0.55
-                ],
-                pointerLength: 10,
-                pointerWidth: 10,
-                fill: '#ff8c00',
-                stroke: '#ff8c00',
-                strokeWidth: 4,
-                dash: [5, 3]
-            });
-            layer.add(pass);
-            
-            // Ruck marker
-            const ruck = new Konva.Star({
-                x: stage.width() * 0.58,
-                y: stage.height() * 0.53,
-                numPoints: 5,
-                innerRadius: 15,
-                outerRadius: 22,
-                fill: 'rgba(255, 140, 0, 0.7)',
-                stroke: '#ffd700',
-                strokeWidth: 2
-            });
-            layer.add(ruck);
-            
-            // Add ruck label
-            const ruckLabel = new Konva.Text({
-                x: stage.width() * 0.58 - 20,
-                y: stage.height() * 0.53 + 30,
-                text: 'Ruck',
-                fontSize: 14,
-                fontFamily: 'Arial',
-                fill: '#ffd700',
-                fontStyle: 'bold'
-            });
-            layer.add(ruckLabel);
-            
-            layer.draw();
+        requestAnimationFrame(animate);
+      }
+
+      // Save Steps
+      function saveStep() {
+        const playerStates = players.map(p => ({
+          left: p.style.left,
+          top: p.style.top,
+          role: p.className,
+          id: p.dataset.id,
+          path: paths.get(p.dataset.id) || [],
+          dummy: p.classList.contains("dummy")
+        }));
+
+        const ballState = ball ? { 
+          left: ball.style.left,
+          top: ball.style.top,
+          path: ballPath
+        } : null;
+
+        steps.push({ players: playerStates, ball: ballState });
+        stepDisplay.textContent = steps.length;
+      }
+
+      // Play animation (players + ball)
+      function playSteps() {
+        const speed = parseInt(speedSlider.value);
+        steps.forEach((step) => {
+          step.players.forEach((pState) => {
+            const player = players.find(pl => pl.dataset.id === pState.id);
+            if (!player) return;
+
+            if (pState.dummy) {
+              player.classList.add("dummy");
+              const label = document.createElement("div");
+              label.textContent = "Dummy";
+              label.className = "dummy-label";
+              field.appendChild(label);
+              const moveLabel = () => {
+                label.style.left = player.style.left;
+                label.style.top = `${parseInt(player.style.top) - 15}px`;
+                requestAnimationFrame(moveLabel);
+              };
+              moveLabel();
+            }
+
+            animatePlayerAlongPath(player, pState.path.length ? pState.path : [{ x: parseInt(pState.left), y: parseInt(pState.top) }], speed);
+          });
+
+          // Animate the ball independently
+          if (step.ball && ball) {
+            animatePlayerAlongPath(ball, step.ball.path.length ? step.ball.path : [{ x: parseInt(step.ball.left), y: parseInt(step.ball.top) }], speed);
+          }
+        });
+      }
+
+      // Export / Import
+      function exportPlay() {
+        playData.value = JSON.stringify({ steps });
+      }
+
+      function importPlay() {
+        try {
+          const data = JSON.parse(playData.value);
+          if (data.steps) {
+            steps.length = 0;
+            steps.push(...data.steps);
+            stepDisplay.textContent = steps.length;
+            alert("Play imported!");
+          }
+        } catch {
+          alert("Invalid JSON.");
         }
-        
-        // Initialize the field and players
-        drawField();
-        createPlayers();
-        drawSamplePlay();
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            stage.width(document.querySelector('.canvas-container').offsetWidth);
-            stage.height(document.querySelector('.canvas-container').offsetHeight);
-            layer.destroyChildren();
-            drawField();
-            createPlayers();
-            drawSamplePlay();
-        });
-        
-        // Player selection
-        document.querySelectorAll('.player-item').forEach(item => {
-            item.addEventListener('click', function() {
-                document.querySelectorAll('.player-item').forEach(i => i.classList.remove('selected'));
-                this.classList.add('selected');
-            });
-        });
-        
-        // Tool selection
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-        
-        // Play button functionality
-        document.querySelector('.control-btn.play').addEventListener('click', function() {
-            this.textContent = this.textContent === '▶' ? '⏸' : '▶';
-        });
-    </script>
+      }
+
+      // Reset field
+      function resetField() {
+        field.innerHTML = "";
+        players.length = 0;
+        ball = null;
+        steps.length = 0;
+        paths.clear();
+        ballPath = [];
+        playerCount = 0;
+        stepDisplay.textContent = "0";
+        selectedPlayer = null;
+      }
+    })();
+  </script>
 </body>
 </html>
