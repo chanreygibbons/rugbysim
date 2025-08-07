@@ -3,176 +3,191 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rugby Play Designer</title>
+  <title>Rugby Tactics MVP</title>
   <style>
-    body, html {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
+      font-family: Arial, sans-serif;
     }
     #field {
-      background-image: url('H.png');
-      background-size: cover;
-      background-position: center;
       width: 100vw;
       height: 100vh;
+      background: url('H.png') center/cover no-repeat;
       position: relative;
+      overflow: hidden;
     }
-    .player, .defender, .ball {
+    .player, .ball {
+      position: absolute;
       width: 40px;
       height: 40px;
+      background-color: #007bff;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       color: white;
-      font-weight: bold;
-      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       cursor: pointer;
-      user-select: none;
-    }
-    .player {
-      background-color: red;
-    }
-    .defender {
-      background-color: blue;
+      transition: all 0.5s ease;
     }
     .ball {
-      background: none;
       font-size: 24px;
+      background-color: transparent;
     }
-    #controls {
+    .tackled {
+      background-color: red !important;
+    }
+    .controls {
       position: absolute;
       top: 10px;
       left: 10px;
+      z-index: 10;
       background: rgba(255, 255, 255, 0.8);
       padding: 10px;
-      border-radius: 5px;
-      z-index: 10;
+      border-radius: 8px;
     }
-    button {
-      margin: 5px;
-    }
-    .tackle {
-      border: 2px solid yellow;
+    .controls button {
+      margin: 2px;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button onclick="addPlayer('player')">Add Attacker</button>
+  <div class="controls">
+    <button onclick="addPlayer('attacker')">Add Attacker</button>
     <button onclick="addPlayer('defender')">Add Defender</button>
     <button onclick="addBall()">Add Ball</button>
     <button onclick="saveStep()">Save Step</button>
     <button onclick="undoStep()">Undo</button>
     <button onclick="resetField()">Reset</button>
-    <button onclick="downloadMP4()">Export MP4</button>
+    <button onclick="playSteps()">Play</button>
+    <button onclick="pauseSteps()">Pause</button>
   </div>
   <div id="field"></div>
 
   <script>
-    const field = document.getElementById("field");
-    const steps = [];
-    let dragging = null;
-    let offsetX = 0;
-    let offsetY = 0;
+    const field = document.getElementById('field');
+    let dragged = null;
+    let offsetX, offsetY;
     let playerCount = 0;
-    let defenderCount = 0;
     let ballExists = false;
+    let steps = [];
+    let currentStep = 0;
+    let isPlaying = false;
+    let playInterval;
 
-    field.addEventListener("mousedown", (e) => {
-      if (e.target.classList.contains("player") || e.target.classList.contains("defender") || e.target.classList.contains("ball")) {
-        dragging = e.target;
-        const rect = dragging.getBoundingClientRect();
+    field.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('player') || e.target.classList.contains('ball')) {
+        dragged = e.target;
+        const rect = dragged.getBoundingClientRect();
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
       }
     });
 
-    field.addEventListener("mouseup", () => {
-      dragging = null;
-    });
-
-    field.addEventListener("mousemove", (e) => {
-      if (dragging) {
-        dragging.style.left = `${e.clientX - offsetX}px`;
-        dragging.style.top = `${e.clientY - offsetY}px`;
+    field.addEventListener('mousemove', e => {
+      if (dragged) {
+        dragged.style.left = `${e.clientX - offsetX}px`;
+        dragged.style.top = `${e.clientY - offsetY}px`;
+        checkTackles();
       }
     });
 
+    field.addEventListener('mouseup', () => {
+      dragged = null;
+    });
+
     function addPlayer(type) {
-      const div = document.createElement("div");
-      div.classList.add(type);
-      const count = type === "player" ? ++playerCount : ++defenderCount;
-      div.innerText = count;
+      if (document.querySelectorAll(`.${type}`).length >= 15) return;
+      const div = document.createElement('div');
+      div.className = `player ${type}`;
+      div.innerText = ++playerCount;
       div.style.left = `${window.innerWidth / 2 - 20}px`;
       div.style.top = `${window.innerHeight / 2 - 20}px`;
-      div.addEventListener("dblclick", () => {
-        if (type === "player" && div.classList.contains("player")) {
-          div.classList.toggle("tackle");
-        }
-      });
       field.appendChild(div);
     }
 
     function addBall() {
       if (ballExists) return;
-      const div = document.createElement("div");
-      div.classList.add("ball");
-      div.innerText = "🏉";
-      div.style.left = `${window.innerWidth / 2 - 20}px`;
-      div.style.top = `${window.innerHeight / 2 - 20}px`;
-      field.appendChild(div);
+      const ball = document.createElement('div');
+      ball.className = 'ball';
+      ball.innerText = '🏉';
+      ball.style.left = `${window.innerWidth / 2 - 20}px`;
+      ball.style.top = `${window.innerHeight / 2 - 20}px`;
+      field.appendChild(ball);
       ballExists = true;
     }
 
     function saveStep() {
-      const step = [];
-      document.querySelectorAll(".player, .defender, .ball").forEach((el) => {
-        step.push({
+      const snapshot = [];
+      document.querySelectorAll('.player, .ball').forEach(el => {
+        snapshot.push({
+          id: el.innerText || 'ball',
           class: el.className,
-          text: el.innerText,
           left: el.style.left,
-          top: el.style.top,
+          top: el.style.top
         });
       });
-      steps.push(step);
+      steps.push(snapshot);
     }
 
     function undoStep() {
-      if (steps.length > 0) {
-        const lastStep = steps.pop();
-        field.innerHTML = "";
-        document.body.appendChild(document.getElementById("controls"));
-        ballExists = false;
-        lastStep.forEach((item) => {
-          const div = document.createElement("div");
-          div.className = item.class;
-          div.innerText = item.text;
-          div.style.left = item.left;
-          div.style.top = item.top;
-          if (item.class.includes("ball")) ballExists = true;
-          div.addEventListener("dblclick", () => {
-            if (div.classList.contains("player")) {
-              div.classList.toggle("tackle");
-            }
-          });
-          field.appendChild(div);
-        });
-      }
+      steps.pop();
     }
 
     function resetField() {
-      document.querySelectorAll(".player, .defender, .ball").forEach((el) => el.remove());
-      steps.length = 0;
+      field.innerHTML = '';
       playerCount = 0;
-      defenderCount = 0;
       ballExists = false;
+      steps = [];
     }
 
-    function downloadMP4() {
-      alert("For now, use a screen recording tool to export to MP4. Built-in export coming soon!");
+    function playSteps() {
+      if (isPlaying || steps.length === 0) return;
+      isPlaying = true;
+      currentStep = 0;
+
+      playInterval = setInterval(() => {
+        if (currentStep >= steps.length) {
+          clearInterval(playInterval);
+          isPlaying = false;
+          return;
+        }
+
+        const snapshot = steps[currentStep];
+        snapshot.forEach(data => {
+          let el = Array.from(document.querySelectorAll('.player, .ball')).find(e => (e.innerText || 'ball') === data.id);
+          if (el) {
+            el.style.left = data.left;
+            el.style.top = data.top;
+          }
+        });
+        currentStep++;
+        checkTackles();
+      }, 1000);
+    }
+
+    function pauseSteps() {
+      clearInterval(playInterval);
+      isPlaying = false;
+    }
+
+    function checkTackles() {
+      const attackers = document.querySelectorAll('.attacker');
+      const defenders = document.querySelectorAll('.defender');
+
+      attackers.forEach(attacker => {
+        const aRect = attacker.getBoundingClientRect();
+        defenders.forEach(defender => {
+          const dRect = defender.getBoundingClientRect();
+          const dx = aRect.left - dRect.left;
+          const dy = aRect.top - dRect.top;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < 50) {
+            attacker.classList.add('tackled');
+          } else {
+            attacker.classList.remove('tackled');
+          }
+        });
+      });
     }
   </script>
 </body>
