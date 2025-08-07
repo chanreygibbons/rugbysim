@@ -2,201 +2,168 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rugby Coaching Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rugby Play Animator</title>
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
-      background: #222;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      user-select: none;
     }
-
     #controls {
       padding: 10px;
-    }
-
-    button {
-      margin: 5px;
-      padding: 10px;
-      font-size: 16px;
-    }
-
-    #field {
-      position: relative;
-      background: url('H.png') no-repeat center center;
-      background-size: cover;
-      width: 1000px;
-      height: 600px;
-      border: 3px solid #fff;
-      overflow: hidden;
-    }
-
-    .player, .defender {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: blue;
+      background: #222;
       color: white;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #controls button {
+      padding: 8px 12px;
+      border: none;
+      background: #555;
+      color: white;
       cursor: pointer;
-      user-select: none;
-      transition: top 0.4s ease, left 0.4s ease;
-      font-weight: bold;
+      border-radius: 4px;
     }
-
-    .defender {
-      background: red;
+    #field {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 60px);
+      background: url("H.png") center/cover no-repeat;
+      overflow: hidden;
     }
-
-    .tackled {
-      background: darkred !important;
-    }
-
-    .ball {
-      font-size: 20px;
-      width: 30px;
-      height: 30px;
+    .player, .ball {
       position: absolute;
-      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 123, 255, 0.8);
+      color: white;
       display: flex;
       justify-content: center;
       align-items: center;
-      user-select: none;
-      transition: top 0.4s ease, left 0.4s ease;
+      border-radius: 50%;
+      font-weight: bold;
+      transition: top 0.5s ease, left 0.5s ease;
+      cursor: grab;
+    }
+    .ball {
+      background: orange;
+      width: 30px;
+      height: 30px;
+    }
+    .tackle {
+      border: 3px solid red;
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-
   <div id="controls">
-    <button onclick="addPlayer('attacker')">Add Attacker</button>
-    <button onclick="addPlayer('defender')">Add Defender</button>
+    <button onclick="addPlayer('attack')">Add Attacker</button>
+    <button onclick="addPlayer('defense')">Add Defender</button>
     <button onclick="addBall()">Add Ball</button>
     <button onclick="saveStep()">Save Step</button>
     <button onclick="undoStep()">Undo</button>
     <button onclick="resetField()">Reset</button>
   </div>
-
   <div id="field"></div>
-
   <script>
     const field = document.getElementById('field');
-    let stepHistory = [];
-    let playerCount = 0;
-    let defenderCount = 0;
-    let ball;
+    const maxPlayers = 15;
+    let attackCount = 0;
+    let defenseCount = 0;
+    let dragging = null;
+    let offsetX, offsetY;
+    let steps = [];
+
+    function makeDraggable(el) {
+      el.addEventListener('mousedown', (e) => {
+        dragging = el;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (dragging) {
+        dragging.style.left = `${e.pageX - offsetX}px`;
+        dragging.style.top = `${e.pageY - offsetY - 60}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = null;
+    });
 
     function addPlayer(type) {
-      const player = document.createElement('div');
-      player.classList.add(type === 'attacker' ? 'player' : 'defender');
-      player.textContent = type === 'attacker' ? ++playerCount : ++defenderCount;
-      player.style.left = `${field.clientWidth / 2 - 20}px`;
-      player.style.top = `${field.clientHeight / 2 - 20}px`;
-      field.appendChild(player);
-      makeDraggable(player);
+      if (type === 'attack' && attackCount >= maxPlayers) return;
+      if (type === 'defense' && defenseCount >= maxPlayers) return;
+
+      const el = document.createElement('div');
+      el.className = 'player';
+      el.textContent = type === 'attack' ? ++attackCount : ++defenseCount;
+      if (type === 'defense') el.classList.add('tackle');
+      el.style.left = `${window.innerWidth / 2 - 20}px`;
+      el.style.top = `${window.innerHeight / 2 - 80}px`;
+      makeDraggable(el);
+      field.appendChild(el);
     }
 
     function addBall() {
-      if (ball) return; // only one ball allowed
-      ball = document.createElement('div');
-      ball.classList.add('ball');
-      ball.textContent = '🏉';
-      ball.style.left = `${field.clientWidth / 2 - 15}px`;
-      ball.style.top = `${field.clientHeight / 2 - 15}px`;
-      field.appendChild(ball);
+      const ball = document.createElement('div');
+      ball.className = 'ball';
+      ball.style.left = `${window.innerWidth / 2 - 15}px`;
+      ball.style.top = `${window.innerHeight / 2 - 75}px`;
       makeDraggable(ball);
-    }
-
-    function makeDraggable(el) {
-      let offsetX, offsetY, isDragging = false;
-
-      el.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
-        el.style.zIndex = 1000;
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const x = e.pageX - field.offsetLeft - offsetX;
-        const y = e.pageY - field.offsetTop - offsetY;
-        el.style.left = `${x}px`;
-        el.style.top = `${y}px`;
-        if (el.classList.contains('player')) checkTackles();
-      });
-
-      document.addEventListener('mouseup', () => {
-        isDragging = false;
-        el.style.zIndex = '';
-      });
-    }
-
-    function checkTackles() {
-      const players = Array.from(field.querySelectorAll('.player'));
-      const defenders = Array.from(field.querySelectorAll('.defender'));
-      players.forEach(p => {
-        const px = parseInt(p.style.left);
-        const py = parseInt(p.style.top);
-        let tackled = false;
-        defenders.forEach(d => {
-          const dx = parseInt(d.style.left);
-          const dy = parseInt(d.style.top);
-          const dist = Math.sqrt((px - dx) ** 2 + (py - dy) ** 2);
-          if (dist < 50) tackled = true;
-        });
-        if (tackled) {
-          p.classList.add('tackled');
-        } else {
-          p.classList.remove('tackled');
-        }
-      });
+      field.appendChild(ball);
     }
 
     function saveStep() {
-      const positions = Array.from(field.children).map(el => ({
-        class: el.className,
-        left: el.style.left,
-        top: el.style.top,
-        text: el.textContent
-      }));
-      stepHistory.push(positions);
+      const positions = [];
+      document.querySelectorAll('.player, .ball').forEach(el => {
+        positions.push({
+          class: el.className,
+          text: el.textContent,
+          left: el.style.left,
+          top: el.style.top
+        });
+      });
+      steps.push(positions);
+
+      html2canvas(field).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `step_${steps.length}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      });
     }
 
     function undoStep() {
-      if (stepHistory.length < 1) return;
-      const lastStep = stepHistory.pop();
+      if (steps.length === 0) return;
+      steps.pop();
+      if (steps.length === 0) return resetField();
+      loadStep(steps[steps.length - 1]);
+    }
+
+    function loadStep(step) {
       field.innerHTML = '';
-      ball = null;
-      playerCount = 0;
-      defenderCount = 0;
-      lastStep.forEach(item => {
+      step.forEach(data => {
         const el = document.createElement('div');
-        el.className = item.class;
-        el.textContent = item.text;
-        el.style.left = item.left;
-        el.style.top = item.top;
-        if (el.classList.contains('player')) playerCount++;
-        if (el.classList.contains('defender')) defenderCount++;
-        if (el.classList.contains('ball')) ball = el;
-        field.appendChild(el);
+        el.className = data.class;
+        el.textContent = data.text;
+        el.style.left = data.left;
+        el.style.top = data.top;
         makeDraggable(el);
+        field.appendChild(el);
       });
-      checkTackles();
     }
 
     function resetField() {
       field.innerHTML = '';
-      ball = null;
-      playerCount = 0;
-      defenderCount = 0;
-      stepHistory = [];
+      attackCount = 0;
+      defenseCount = 0;
+      steps = [];
     }
   </script>
 </body>
