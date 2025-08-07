@@ -30,6 +30,8 @@
       font-weight: bold;
       cursor: grab;
       user-select: none;
+      /* Smooth animation for movement */
+      transition: left 0.3s ease, top 0.3s ease;
     }
     .player {
       background: blue;
@@ -153,8 +155,8 @@
     }
 
     function saveStep() {
-      const currentPositions = [...field.children].filter(el => el.classList.contains("player") || el.classList.contains("defender") || el.classList.contains("ball"))
-        .map(el => ({
+      const currentPositions = [...field.children].filter(el => el.classList.contains("player") || el.classList.contains("defender") || el.classList.contains("ball")
+        ).map(el => ({
           class: el.className,
           text: el.textContent,
           html: el.innerHTML,
