@@ -3,233 +3,216 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rugby Coaching Tool</title>
+  <title>Rugby Play Simulator MVP</title>
   <style>
-    html, body {
+    body, html {
       margin: 0;
       padding: 0;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
-
     #field {
-      position: relative;
-      width: 100%;
-      max-width: 1200px;
-      aspect-ratio: 100 / 70;
-      background-image: url('H.png');
+      width: 100vw;
+      height: 100vh;
+      background: url('H.png') no-repeat center center;
       background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      overflow: hidden;
+      position: relative;
     }
-
-    .player, .ball {
-      position: absolute;
+    .player, .defender, .ball {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      text-align: center;
-      line-height: 40px;
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-weight: bold;
-      cursor: pointer;
+      cursor: grab;
       user-select: none;
-      transition: left 0.5s ease, top 0.5s ease;
     }
-
-    .player.attacking {
-      background-color: red;
+    .player {
+      background: blue;
       color: white;
     }
-
-    .player.defending {
-      background-color: blue;
+    .defender {
+      background: red;
       color: white;
     }
-
-    .tackle {
-      background-color: purple !important;
-    }
-
     .ball {
-      background-color: transparent;
+      background: none;
       font-size: 24px;
-      width: 30px;
-      height: 30px;
-      line-height: 30px;
+      cursor: grab;
     }
-
-    #controls {
+    .controls {
       position: absolute;
       top: 10px;
       left: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 10;
     }
-
     button {
-      padding: 5px 10px;
-      font-size: 14px;
-      cursor: pointer;
+      margin: 2px;
+    }
+    .tackle {
+      border: 3px solid yellow;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button onclick="addPlayer('attacking')">Add Attacker</button>
-    <button onclick="addPlayer('defending')">Add Defender</button>
-    <button onclick="addBall()">Add Ball</button>
-    <button onclick="saveStep()">Save Step</button>
-    <button onclick="playSteps()">Play</button>
-    <button onclick="pauseSteps()">Pause</button>
-    <button onclick="reset()">Reset</button>
+  <div id="field">
+    <div class="controls">
+      <button onclick="addPlayer()">Add Attacker</button>
+      <button onclick="addDefender()">Add Defender</button>
+      <button onclick="addBall()">Add Ball</button>
+      <button onclick="saveStep()">Save Step</button>
+      <button onclick="resetSteps()">Reset</button>
+      <button onclick="undoStep()">Undo</button>
+      <button onclick="playAnimation()">Play</button>
+      <button onclick="pauseAnimation()">Pause</button>
+    </div>
   </div>
-  <div id="field"></div>
 
   <script>
-    const field = document.getElementById('field');
+    const field = document.getElementById("field");
+    let attackers = 0;
+    let defenders = 0;
+    let ballExists = false;
     const maxPlayers = 15;
-    let attackingCount = 0;
-    let defendingCount = 0;
-    let dragging = null;
-    let offsetX = 0;
-    let offsetY = 0;
-    let ballAdded = false;
-    let steps = [];
+    const steps = [];
+    let animationInterval;
     let currentStep = 0;
-    let interval;
 
-    function createElement(type, className, text) {
-      const el = document.createElement('div');
-      el.classList.add(type, className);
-      el.innerText = text;
-      field.appendChild(el);
-
-      el.style.left = `${field.clientWidth / 2 - 20}px`;
-      el.style.top = `${field.clientHeight / 2 - 20}px`;
-
-      el.addEventListener('mousedown', e => {
-        dragging = el;
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
-      });
-
-      return el;
+    function addPlayer() {
+      if (attackers >= maxPlayers) return;
+      const player = document.createElement("div");
+      player.className = "player";
+      player.textContent = attackers + 1;
+      player.style.left = "200px";
+      player.style.top = "200px";
+      makeDraggable(player);
+      field.appendChild(player);
+      attackers++;
     }
 
-    function addPlayer(team) {
-      if (team === 'attacking' && attackingCount >= maxPlayers) return;
-      if (team === 'defending' && defendingCount >= maxPlayers) return;
-
-      const number = team === 'attacking' ? ++attackingCount : ++defendingCount;
-      const player = createElement('player', team, number);
-      player.dataset.team = team;
+    function addDefender() {
+      if (defenders >= maxPlayers) return;
+      const defender = document.createElement("div");
+      defender.className = "defender";
+      defender.textContent = defenders + 1;
+      defender.style.left = "400px";
+      defender.style.top = "200px";
+      makeDraggable(defender);
+      field.appendChild(defender);
+      defenders++;
     }
 
     function addBall() {
-      if (ballAdded) return;
-      const ball = createElement('ball', '', '🏉');
-      ball.classList.add('ball');
-      ballAdded = true;
+      if (ballExists) return;
+      const ball = document.createElement("div");
+      ball.className = "ball";
+      ball.innerHTML = "🏉";
+      ball.style.left = "300px";
+      ball.style.top = "200px";
+      makeDraggable(ball);
+      field.appendChild(ball);
+      ballExists = true;
     }
 
-    document.addEventListener('mouseup', () => dragging = null);
+    function makeDraggable(element) {
+      let offsetX, offsetY, isDragging = false;
 
-    document.addEventListener('mousemove', e => {
-      if (dragging) {
-        const rect = field.getBoundingClientRect();
-        let x = e.clientX - rect.left - offsetX;
-        let y = e.clientY - rect.top - offsetY;
+      element.addEventListener("mousedown", (e) => {
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        isDragging = true;
+        element.style.cursor = "grabbing";
+      });
 
-        // Keep elements within bounds
-        x = Math.max(0, Math.min(x, field.clientWidth - dragging.offsetWidth));
-        y = Math.max(0, Math.min(y, field.clientHeight - dragging.offsetHeight));
-
-        dragging.style.left = `${x}px`;
-        dragging.style.top = `${y}px`;
-
-        if (dragging.classList.contains('player')) {
-          detectTackles();
+      document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          element.style.left = `${e.clientX - offsetX}px`;
+          element.style.top = `${e.clientY - offsetY}px`;
         }
-      }
-    });
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isDragging) {
+          isDragging = false;
+          element.style.cursor = "grab";
+        }
+      });
+
+      element.addEventListener("dblclick", () => {
+        if (element.classList.contains("defender")) {
+          element.classList.toggle("tackle");
+        }
+      });
+    }
 
     function saveStep() {
-      const state = Array.from(field.children).map(el => ({
-        type: el.className,
-        text: el.innerText,
-        left: el.style.left,
-        top: el.style.top,
-        team: el.dataset?.team
-      }));
-      steps.push(state);
+      const currentPositions = [...field.children].filter(el => el.classList.contains("player") || el.classList.contains("defender") || el.classList.contains("ball"))
+        .map(el => ({
+          class: el.className,
+          text: el.textContent,
+          html: el.innerHTML,
+          left: el.style.left,
+          top: el.style.top,
+          tackle: el.classList.contains("tackle")
+        }));
+      steps.push(currentPositions);
     }
 
-    function reset() {
-      field.innerHTML = '';
-      attackingCount = 0;
-      defendingCount = 0;
-      ballAdded = false;
-      steps = [];
+    function resetSteps() {
+      steps.length = 0;
+    }
+
+    function undoStep() {
+      steps.pop();
+    }
+
+    function playAnimation() {
+      if (steps.length === 0) return;
       currentStep = 0;
-      pauseSteps();
-    }
-
-    function playSteps() {
-      if (!steps.length) return;
-      pauseSteps();
-      interval = setInterval(() => {
+      clearInterval(animationInterval);
+      animationInterval = setInterval(() => {
         if (currentStep >= steps.length) {
-          pauseSteps();
+          clearInterval(animationInterval);
           return;
         }
-        loadStep(steps[currentStep]);
+        applyStep(steps[currentStep]);
         currentStep++;
       }, 800);
     }
 
-    function pauseSteps() {
-      clearInterval(interval);
+    function pauseAnimation() {
+      clearInterval(animationInterval);
     }
 
-    function loadStep(step) {
-      field.innerHTML = '';
-      step.forEach(item => {
-        const el = createElement(
-          item.type.includes('ball') ? 'ball' : 'player',
-          item.team || '',
-          item.text
-        );
-        el.style.left = item.left;
-        el.style.top = item.top;
-        if (item.team) el.dataset.team = item.team;
-      });
-      detectTackles();
-    }
-
-    function detectTackles() {
-      const attackers = Array.from(field.querySelectorAll('.player.attacking'));
-      const defenders = Array.from(field.querySelectorAll('.player.defending'));
-      attackers.forEach(att => {
-        const attRect = att.getBoundingClientRect();
-        defenders.forEach(def => {
-          const defRect = def.getBoundingClientRect();
-          const dx = attRect.left - defRect.left;
-          const dy = attRect.top - defRect.top;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < 50) {
-            att.classList.add('tackle');
-            def.classList.add('tackle');
-          } else {
-            att.classList.remove('tackle');
-            def.classList.remove('tackle');
-          }
-        });
+    function applyStep(stepData) {
+      const elements = [...field.children].filter(el => el.classList.contains("player") || el.classList.contains("defender") || el.classList.contains("ball"));
+      elements.forEach(el => field.removeChild(el));
+      attackers = 0;
+      defenders = 0;
+      ballExists = false;
+      stepData.forEach(data => {
+        const el = document.createElement("div");
+        el.className = data.class;
+        if (data.class.includes("ball")) {
+          el.innerHTML = data.html;
+          ballExists = true;
+        } else {
+          el.textContent = data.text;
+        }
+        el.style.left = data.left;
+        el.style.top = data.top;
+        if (data.tackle) el.classList.add("tackle");
+        makeDraggable(el);
+        field.appendChild(el);
+        if (data.class.includes("player")) attackers++;
+        if (data.class.includes("defender")) defenders++;
       });
     }
   </script>
