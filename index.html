@@ -3,396 +3,190 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rugby Play Simulator MVP</title>
+  <title>Rugby Play Simulator</title>
   <style>
     body {
       margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      user-select: none;
     }
-
-    .toolbar {
-      background: #222;
-      color: #fff;
-      padding: 10px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .toolbar button, .toolbar select, .toolbar input[type="checkbox"], .toolbar input[type="range"] {
-      padding: 6px 10px;
-      background: #444;
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      border-radius: 5px;
-      font-size: 14px;
-    }
-
-    .toolbar button:hover {
-      background: #666;
-    }
-
     #field {
+      width: 100vw;
+      height: 100vh;
+      background-image: url("https://upload.wikimedia.org/wikipedia/commons/5/5e/Rugby_pitch.svg");
+      background-size: cover;
       position: relative;
-      flex-grow: 1;
-      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Rugby_pitch_metric_and_imperial.svg/1280px-Rugby_pitch_metric_and_imperial.svg.png') no-repeat center;
-      background-size: contain;
       overflow: hidden;
     }
-
     .player, .ball {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: absolute;
       cursor: grab;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      user-select: none;
-      touch-action: none;
-      text-align: center;
-      font-weight: bold;
+      transition: top 0.7s ease, left 0.7s ease;
     }
-
-    .player {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      line-height: 40px;
-      color: #fff;
+    .attacking {
+      background-color: blue;
     }
-
-    .player.forward { background-color: crimson; }
-    .player.back { background-color: royalblue; }
-    .player.other { background-color: seagreen; }
-    .player.dummy { opacity: 0.5; }
-
-    .dummy-label {
-      position: absolute;
-      font-size: 12px;
-      color: yellow;
-      text-shadow: 0 0 3px black;
-      pointer-events: none;
+    .defending {
+      background-color: red;
     }
-
     .ball {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background-color: gold;
+      background-color: orange;
     }
-
-    .path-line {
+    .tackled {
+      background-color: darkred !important;
+    }
+    .controls {
       position: absolute;
-      border: 1px dashed rgba(255,255,255,0.4);
-      pointer-events: none;
-    }
-
-    .step-panel {
-      background: #eee;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
       padding: 10px;
-      text-align: center;
+      border-radius: 8px;
+      z-index: 10;
     }
-
-    textarea {
-      width: 100%;
-      height: 100px;
-      margin-top: 5px;
-      font-size: 12px;
+    .controls button, .controls select {
+      margin: 5px;
     }
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <button id="addPlayerBtn">Add Player</button>
-    <select id="roleSelect">
-      <option value="forward">Forward</option>
-      <option value="back">Back</option>
-      <option value="other">Other</option>
+  <div class="controls">
+    <button onclick="addPlayer('attacking')">Add Attacker</button>
+    <button onclick="addPlayer('defending')">Add Defender</button>
+    <button onclick="addBall()">Add Ball</button>
+    <button onclick="saveStep()">Save Step</button>
+    <button onclick="playSteps()">Play</button>
+    <button onclick="undoStep()">Undo</button>
+    <button onclick="resetField()">Reset</button>
+    <label for="speed">Speed:</label>
+    <select id="speed">
+      <option value="700">1x</option>
+      <option value="1400">0.5x</option>
+      <option value="350">2x</option>
     </select>
-    <button id="addBallBtn">Add Ball</button>
-    <button id="saveStepBtn">Save Step</button>
-    <button id="playStepsBtn">Play</button>
-    <button id="resetBtn">Reset</button>
-    <label><input type="checkbox" id="dummyToggle"> Dummy Runner</label>
-    <label for="speedRange">Speed:</label>
-    <input type="range" id="speedRange" min="200" max="2000" step="100" value="800">
-    <button id="exportBtn">Export</button>
-    <button id="importBtn">Import</button>
   </div>
-
   <div id="field"></div>
 
-  <div class="step-panel">
-    Step: <span id="currentStep">0</span>
-    <textarea id="playData" placeholder="Exported/Imported JSON will appear here..."></textarea>
-  </div>
-
   <script>
-    (() => {
-      let playerCount = 0;
-      const players = [];
-      let ball = null;
-      const steps = [];
-      const paths = new Map(); // path waypoints for players
-      let ballPath = [];       // path for the ball
-      let selectedPlayer = null;
-      const field = document.getElementById("field");
-      const stepDisplay = document.getElementById("currentStep");
-      const playData = document.getElementById("playData");
-      const speedSlider = document.getElementById("speedRange");
-      const dummyToggle = document.getElementById("dummyToggle");
+    const field = document.getElementById("field");
+    let currentId = 0;
+    let steps = [];
 
-      // Toolbar listeners
-      document.getElementById("addPlayerBtn").addEventListener("click", () => addPlayer(document.getElementById("roleSelect").value));
-      document.getElementById("addBallBtn").addEventListener("click", addBall);
-      document.getElementById("saveStepBtn").addEventListener("click", saveStep);
-      document.getElementById("playStepsBtn").addEventListener("click", playSteps);
-      document.getElementById("resetBtn").addEventListener("click", resetField);
-      document.getElementById("exportBtn").addEventListener("click", exportPlay);
-      document.getElementById("importBtn").addEventListener("click", importPlay);
-      dummyToggle.addEventListener("change", () => {
-        if (selectedPlayer) selectedPlayer.classList.toggle("dummy", dummyToggle.checked);
-      });
+    function createDraggable(type, id) {
+      const el = document.createElement("div");
+      el.classList.add(type);
+      el.classList.add(type === "ball" ? "ball" : "player");
+      el.setAttribute("data-id", id);
+      if (type !== "ball") el.innerText = id;
+      field.appendChild(el);
 
-      // Click to add path waypoints (players or ball)
-      field.addEventListener("click", (e) => {
-        const rect = field.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+      el.onmousedown = (e) => {
+        let shiftX = e.clientX - el.getBoundingClientRect().left;
+        let shiftY = e.clientY - el.getBoundingClientRect().top;
 
-        if (selectedPlayer) {
-          const id = selectedPlayer.dataset.id;
-          if (!paths.has(id)) paths.set(id, []);
-          paths.get(id).push({ x, y });
-          drawPath(selectedPlayer);
-        } else if (ball) {
-          ballPath.push({ x, y });
-          drawPath(ball, true);
+        function moveAt(pageX, pageY) {
+          el.style.left = pageX - shiftX + "px";
+          el.style.top = pageY - shiftY + "px";
+          checkTackles();
         }
-      });
 
-      // Add Player
-      function addPlayer(role) {
-        playerCount++;
-        const player = document.createElement("div");
-        player.className = `player ${role}`;
-        player.textContent = playerCount;
-        player.dataset.id = `player${playerCount}`;
-        setInitialPosition(player);
-        makeDraggable(player);
-        player.addEventListener("click", (e) => {
-          e.stopPropagation();
-          selectPlayer(player);
-        });
-        field.appendChild(player);
-        players.push(player);
-      }
+        function onMouseMove(e) {
+          moveAt(e.pageX, e.pageY);
+        }
 
-      // Add Ball
-      function addBall() {
-        if (ball) return;
-        ball = document.createElement("div");
-        ball.className = "ball";
-        setInitialPosition(ball);
-        makeDraggable(ball);
-        ball.addEventListener("click", (e) => {
-          e.stopPropagation();
-          selectedPlayer = null; // deselect players
-        });
-        field.appendChild(ball);
-      }
+        document.addEventListener("mousemove", onMouseMove);
 
-      function setInitialPosition(el) {
-        el.style.left = "100px";
-        el.style.top = "100px";
-      }
-
-      function selectPlayer(player) {
-        selectedPlayer = player;
-        dummyToggle.checked = player.classList.contains("dummy");
-      }
-
-      // Draggable logic (touch + mouse)
-      function makeDraggable(el) {
-        let offsetX, offsetY;
-        const startDrag = (clientX, clientY) => {
-          offsetX = clientX - el.getBoundingClientRect().left;
-          offsetY = clientY - el.getBoundingClientRect().top;
-          el.style.cursor = "grabbing";
-        };
-        const moveDrag = (clientX, clientY) => {
-          const rect = field.getBoundingClientRect();
-          const newX = clientX - offsetX - rect.left;
-          const newY = clientY - offsetY - rect.top;
-          const maxX = field.clientWidth - el.clientWidth;
-          const maxY = field.clientHeight - el.clientHeight;
-          el.style.left = `${Math.max(0, Math.min(maxX, newX))}px`;
-          el.style.top = `${Math.max(0, Math.min(maxY, newY))}px`;
-        };
-        const stopDrag = () => {
-          el.style.cursor = "grab";
+        el.onmouseup = () => {
           document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-          document.removeEventListener("touchmove", onTouchMove);
-          document.removeEventListener("touchend", onTouchEnd);
+          el.onmouseup = null;
         };
-        const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
-        const onMouseUp = () => stopDrag();
-        const onTouchMove = (e) => {
-          e.preventDefault();
-          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-        };
-        const onTouchEnd = () => stopDrag();
-        el.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          startDrag(e.clientX, e.clientY);
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
+      };
+    }
+
+    function addPlayer(type) {
+      if (document.querySelectorAll("." + type).length >= 15) return;
+      currentId++;
+      createDraggable(type, currentId);
+    }
+
+    function addBall() {
+      if (document.querySelector(".ball")) return;
+      createDraggable("ball", "B");
+    }
+
+    function saveStep() {
+      const snapshot = [];
+      document.querySelectorAll(".player, .ball").forEach((el) => {
+        snapshot.push({
+          id: el.getAttribute("data-id"),
+          type: el.classList.contains("ball") ? "ball" : el.classList.contains("attacking") ? "attacking" : "defending",
+          top: el.style.top,
+          left: el.style.left
         });
-        el.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          startDrag(e.touches[0].clientX, e.touches[0].clientY);
-          document.addEventListener("touchmove", onTouchMove, { passive: false });
-          document.addEventListener("touchend", onTouchEnd);
-        });
+      });
+      steps.push(snapshot);
+    }
+
+    function undoStep() {
+      if (steps.length > 0) {
+        steps.pop();
       }
+    }
 
-      // Draw faint path
-      function drawPath(element, isBall = false) {
-        const id = isBall ? "ball" : element.dataset.id;
-        const oldLine = field.querySelector(`.path-line[data-id="${id}"]`);
-        if (oldLine) oldLine.remove();
-        const pts = isBall ? ballPath : paths.get(id);
-        if (!pts || pts.length < 2) return;
-        const line = document.createElement("div");
-        line.className = "path-line";
-        line.dataset.id = id;
-        line.style.left = "0";
-        line.style.top = "0";
-        line.style.width = "100%";
-        line.style.height = "100%";
-        field.appendChild(line);
-      }
+    function resetField() {
+      document.querySelectorAll(".player, .ball").forEach((el) => el.remove());
+      steps = [];
+      currentId = 0;
+    }
 
-      // Bezier interpolation for animations
-      function bezierPoint(p0, p1, p2, t) {
-        const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
-        const y = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
-        return { x, y };
-      }
-
-      function animatePlayerAlongPath(element, waypoints, duration) {
-        if (!waypoints || waypoints.length < 2) return;
-        const startTime = performance.now();
-        const totalSegments = waypoints.length - 1;
-
-        function animate(time) {
-          const elapsed = time - startTime;
-          const progress = Math.min(1, elapsed / duration);
-          const segProgress = progress * totalSegments;
-          const segIndex = Math.floor(segProgress);
-          const t = segProgress - segIndex;
-
-          const p0 = waypoints[segIndex] || waypoints[0];
-          const p1 = waypoints[segIndex + 1] || waypoints[waypoints.length - 1];
-          const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-          const pos = bezierPoint(p0, mid, p1, t);
-
-          element.style.left = `${pos.x - element.clientWidth / 2}px`;
-          element.style.top = `${pos.y - element.clientHeight / 2}px`;
-
-          if (progress < 1) requestAnimationFrame(animate);
-        }
-        requestAnimationFrame(animate);
-      }
-
-      // Save Steps
-      function saveStep() {
-        const playerStates = players.map(p => ({
-          left: p.style.left,
-          top: p.style.top,
-          role: p.className,
-          id: p.dataset.id,
-          path: paths.get(p.dataset.id) || [],
-          dummy: p.classList.contains("dummy")
-        }));
-
-        const ballState = ball ? { 
-          left: ball.style.left,
-          top: ball.style.top,
-          path: ballPath
-        } : null;
-
-        steps.push({ players: playerStates, ball: ballState });
-        stepDisplay.textContent = steps.length;
-      }
-
-      // Play animation (players + ball)
-      function playSteps() {
-        const speed = parseInt(speedSlider.value);
-        steps.forEach((step) => {
-          step.players.forEach((pState) => {
-            const player = players.find(pl => pl.dataset.id === pState.id);
-            if (!player) return;
-
-            if (pState.dummy) {
-              player.classList.add("dummy");
-              const label = document.createElement("div");
-              label.textContent = "Dummy";
-              label.className = "dummy-label";
-              field.appendChild(label);
-              const moveLabel = () => {
-                label.style.left = player.style.left;
-                label.style.top = `${parseInt(player.style.top) - 15}px`;
-                requestAnimationFrame(moveLabel);
-              };
-              moveLabel();
+    function playSteps() {
+      let delay = 0;
+      const speed = parseInt(document.getElementById("speed").value);
+      steps.forEach((snapshot, i) => {
+        setTimeout(() => {
+          snapshot.forEach((pos) => {
+            let el = document.querySelector(`[data-id='${pos.id}']`);
+            if (!el) {
+              createDraggable(pos.type, pos.id);
+              el = document.querySelector(`[data-id='${pos.id}']`);
             }
-
-            animatePlayerAlongPath(player, pState.path.length ? pState.path : [{ x: parseInt(pState.left), y: parseInt(pState.top) }], speed);
+            el.style.top = pos.top;
+            el.style.left = pos.left;
           });
+          checkTackles();
+        }, delay);
+        delay += speed;
+      });
+    }
 
-          // Animate the ball independently
-          if (step.ball && ball) {
-            animatePlayerAlongPath(ball, step.ball.path.length ? step.ball.path : [{ x: parseInt(step.ball.left), y: parseInt(step.ball.top) }], speed);
+    function checkTackles() {
+      const attackers = document.querySelectorAll(".attacking");
+      const defenders = document.querySelectorAll(".defending");
+
+      attackers.forEach((att) => att.classList.remove("tackled"));
+
+      attackers.forEach((att) => {
+        const aRect = att.getBoundingClientRect();
+        defenders.forEach((def) => {
+          const dRect = def.getBoundingClientRect();
+          const dx = aRect.left - dRect.left;
+          const dy = aRect.top - dRect.top;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < 35) {
+            att.classList.add("tackled");
           }
         });
-      }
-
-      // Export / Import
-      function exportPlay() {
-        playData.value = JSON.stringify({ steps });
-      }
-
-      function importPlay() {
-        try {
-          const data = JSON.parse(playData.value);
-          if (data.steps) {
-            steps.length = 0;
-            steps.push(...data.steps);
-            stepDisplay.textContent = steps.length;
-            alert("Play imported!");
-          }
-        } catch {
-          alert("Invalid JSON.");
-        }
-      }
-
-      // Reset field
-      function resetField() {
-        field.innerHTML = "";
-        players.length = 0;
-        ball = null;
-        steps.length = 0;
-        paths.clear();
-        ballPath = [];
-        playerCount = 0;
-        stepDisplay.textContent = "0";
-        selectedPlayer = null;
-      }
-    })();
+      });
+    }
   </script>
 </body>
 </html>
